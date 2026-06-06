@@ -116,12 +116,8 @@ function renderMonitorPanel(){
 function onShow_monitor(){ monCheckSetup(); }
 function monCheckSetup(){
   const el = document.getElementById('monSetupAlert'); if(!el) return;
-  const hasWorker = APP.worker;
-  const hasLiaraBase = S.get('mon_liara_base');
-  if(!hasWorker){
+  if(!APP.worker){
     el.innerHTML = `<div class="sbox sbox-warn" style="margin-top:0;margin-bottom:14px;">⚠️ Worker تنظیم نشده${APP.isAdmin?` <button class="btn btn-sm" style="width:100%;margin-top:9px;" onclick="switchTab('setup')">تنظیمات</button>`:''}</div>`;
-  } else if(!hasLiaraBase) {
-    el.innerHTML = `<div class="sbox sbox-warn" style="margin-top:0;margin-bottom:14px;">⚠️ آدرس سرویس Perplexity لیارا تنظیم نشده<button class="btn btn-sm" style="width:100%;margin-top:9px;" onclick="monSetupLiara()">تنظیم آدرس لیارا</button></div>`;
   } else {
     el.innerHTML = '';
   }
@@ -139,17 +135,10 @@ function monSwitchTab(t){
   });
 }
 
-function monSetupLiara(){
-  const base = prompt('آدرس baseUrl سرویس Perplexity لیارا را وارد کنید:\n(مثال: https://your-project.iran.liara.run)');
-  if(base){ S.set('mon_liara_base', base.trim().replace(/\/+$/,'')); monCheckSetup(); toast('✅ آدرس ذخيره شد'); }
-}
 
 // —— API Call به لیارا Perplexity ——
 async function liaraPerplexity(messages, opts={}){
-  const liaraBase = S.get('mon_liara_base');
-  const liaraKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiI2YTIzNTgzMDRiOWM2MGI3ZmVlZTQ5ZjkiLCJ0eXBlIjoiYWlfa2V5IiwiaWF0IjoxNzgwNzAxMjMzfQ.KxTGexI62afIFHroc67ju51QiiJuVFiK6tmzVTr9GaU';
 
-  if(!liaraBase) throw new Error('آدرس سرویس Perplexity لیارا تنظیم نشده — در هشدار بالا آدرس را وارد کنید');
 
   const payload = {
     model: opts.model || PERPLEXITY_MODELS.sonar,
@@ -158,16 +147,11 @@ async function liaraPerplexity(messages, opts={}){
     max_tokens: opts.max_tokens ?? 2000,
   };
 
-  // از Worker برای دور زدن تحریم استفاده میکنیم
-  // Worker باید درخواست رو به لیارا فوروارد کنه
+  // key داخل Worker ذخیره است — اینجا فقط base و payload میرود
   const res = await fetch(`https://${APP.worker}/perplexity`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      base: liaraBase,
-      key: liaraKey,
-      payload
-    }),
+    body: JSON.stringify({ payload }),
     signal: AbortSignal.timeout(90000),
   });
 
@@ -232,7 +216,7 @@ async function monRunCompare(){
 // —— موتور اصلی ——
 async function monExecute(query, label, depth){
   if(!APP.worker){ if(APP.isAdmin)switchTab('setup'); else alert('Worker تنظیم نشده'); return; }
-  if(!S.get('mon_liara_base')){ monSetupLiara(); return; }
+  if(!APP.worker){ if(APP.isAdmin)switchTab('setup'); else alert('Worker تنظیم نشده'); return; }
 
   // غیرفعال کردن دکمه‌ها
   ['monDailyBtn','monTopicBtn','monProfileBtn','monCompareBtn'].forEach(id=>{
